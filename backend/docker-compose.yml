@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+    resoman-mysql:
+        image: mysql:5.7
+        container_name: resoman-mysql
+        restart: always
+        env_file:
+            - ./.env
+        volumes:
+            - ./.data/mysql:/var/lib/mysql
+            - ./.docker/mysql/my.cnf/:/etc/mysql/my.cnf
+        environment:
+            MYSQL_DATABASE: ${DB_DATABASE}
+            MYSQL_ALLOW_EMPTY_PASSWORD: TRUE
+            TZ: Europe/Riga
+    resoman-php:
+        container_name: resoman-php
+        build:
+            context: .
+            dockerfile: ./Dockerfile
+        depends_on:
+            - resoman-mysql
+        volumes:
+            - .:/var/www
+            - ./.docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    resoman-nginx:
+        image: nginx:alpine
+        container_name: resoman-nginx
+        restart: always
+        ports:
+            - "80:80"
+            - "443:443"
+        volumes:
+            - ./:/var/www
+            - .docker/nginx/conf.d/:/etc/nginx/conf.d/
+            - .docker/certbot/conf:/etc/letsencrypt
+            - .docker/certbot/www:/var/www/certbot
+    certbot:
+        image: certbot/certbot
+        container_name: certbot
+        volumes:
+            - .docker/certbot/conf:/etc/letsencrypt
+            - .docker/certbot/www:/var/www/certbot
+        command: certonly --webroot -w /var/www/certbot --email helmutsra@gmail.com -d resoman.mycodeis.fun --agree-tos
